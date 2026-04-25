@@ -25,7 +25,12 @@ public static class DependencyInjection
         services.Configure<UploadsOptions>(configuration.GetSection(UploadsOptions.SectionName));
 
         var cs = configuration.GetConnectionString("Default")
-            ?? throw new InvalidOperationException("Connection string 'Default' is not configured.");
+            ?? configuration["ConnectionStrings:Default"]
+            ?? configuration["ConnectionStrings__Default"]
+            ?? Environment.GetEnvironmentVariable("ConnectionStrings__Default")
+            ?? Environment.GetEnvironmentVariable("PG_CONNECTION_STRING")
+            ?? throw new InvalidOperationException(
+                "Connection string 'Default' is not configured. Set ConnectionStrings:Default or env var ConnectionStrings__Default.");
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseNpgsql(cs));
 
