@@ -13,6 +13,18 @@ public class Program
     public static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
+        builder.Configuration.Sources.Clear();
+
+        if (builder.Environment.IsDevelopment())
+        {
+            builder.Configuration
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true);
+        }
+        else
+        {
+            builder.Configuration.AddEnvironmentVariables();
+        }
 
         builder.Services.AddInfrastructure(builder.Configuration);
         builder.Services.AddControllers();
