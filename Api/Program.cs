@@ -13,6 +13,9 @@ public class Program
     public static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
+        var port = Environment.GetEnvironmentVariable("PORT");
+        if (!string.IsNullOrWhiteSpace(port))
+            builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
         builder.Configuration.Sources.Clear();
 
         if (builder.Environment.IsDevelopment())
