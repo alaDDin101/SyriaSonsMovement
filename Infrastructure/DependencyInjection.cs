@@ -29,8 +29,10 @@ public static class DependencyInjection
             ?? configuration["ConnectionStrings__Default"]
             ?? Environment.GetEnvironmentVariable("ConnectionStrings__Default")
             ?? Environment.GetEnvironmentVariable("PG_CONNECTION_STRING")
+            ?? TryBuildConnectionStringFromDatabaseUrl(
+                configuration["DATABASE_URL"] ?? Environment.GetEnvironmentVariable("DATABASE_URL"))
             ?? throw new InvalidOperationException(
-                "Connection string 'Default' is not configured. Set ConnectionStrings:Default or env var ConnectionStrings__Default.");
+                "Connection string 'Default' is not configured. Set ConnectionStrings:Default, ConnectionStrings__Default, PG_CONNECTION_STRING, or DATABASE_URL.");
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseNpgsql(cs));
 
@@ -128,5 +130,31 @@ public static class DependencyInjection
         services.AddScoped<IDashboardMembershipService, DashboardMembershipService>();
 
         return services;
+    }
+
+    private static string? TryBuildConnectionStringFromDatabaseUrl(string? databaseUrl)
+    {
+        if (string.IsNullOrWhiteSpace(databaseUrl))
+            return null;
+
+        if (!Uri.TryCreate(databaseUrl, UriKind.Absolute, out var uri))
+            return null;
+
+        if (!string.Equals(uri.Scheme, "postgres", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(uri.Scheme, "postgresql", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var userInfoParts = uri.UserInfo.Split(':', 2);
+        if (userInfoParts.Length < 2)
+            return null;
+
+        var username = Uri.UnescapeDataString(userInfoParts[0]);
+        var password = Uri.UnescapeDataString(userInfoParts[1]);
+        var database = uri.AbsolutePath.Trim('/');
+        if (string.IsNullOrWhiteSpace(database))
+            return null;
+
+        var port = uri.IsDefaultPort ? 5432 : uri.Port;
+        return $"Host={uri.Host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
     }
 }
